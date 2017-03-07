@@ -1,0 +1,233 @@
+---
+title: "Práctica Análisis Exploratorio R"
+author: "Guillermo Bonafonte Criado"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Introducción con el objetivo del análisis:
+
+En este estudio se hará primeramente un análisis descriptivo de un dataset que consta de estudiantes de matemáticas y portugués así como un análisis exploratorio de los mismos. ¿Es posible predecir el rendimiento del estudiante? ¿Cuáles son los factores que afectan al éxito estudiantil? 
+
+## 2. Carga de datos
+
+###Establecemos y obtenemos directorio de trabajo
+Obtenemos directorio de trabajo y lo asignamos 
+```{r}
+getwd()
+setwd(getwd())
+```
+
+###Comprobar y crear directorio
+Si no existiera el directorio lo creamos y descargamos los datasets
+Almacenamos tambien la fecha de descarga
+```{r}
+if (!file.exists("datos"))
+{
+  dir.create("datos")
+  fileUrl <- "https://archive.ics.uci.edu/ml/machine-learning-databases/00320/student.zip"
+  download.file(fileUrl,destfile="./datos/student.zip", method="curl")
+  unzip("./datos/student.zip", exdir="./datos")
+  list.files("./datos")
+  rm(fileUrl)
+  fechaDescarga <- date()
+  fechaDescarga
+}
+```
+
+###Cargamos los datos con read.table()
+
+```{r}
+library(knitr)
+studentMat <- read.table("./datos/student-mat.csv", 
+                         row.names=NULL, sep=";", header=TRUE)
+studentPor <- read.table("./datos/student-por.csv", 
+                         row.names=NULL, sep=";", header=TRUE)
+
+```
+
+Mostramos un parte de la estructura del datasets para hacernos una idea de su contenido
+```{r}
+kable(head(studentMat[,1:8]))
+kable(head(studentPor[,1:8]))
+
+```
+
+Posteriormente obtenemos los estudiantes que aparecen en ambos CSV y comprobamos el tamaño
+```{r}
+studentMerge <- merge(studentMat,studentPor,
+                       by=c("school","sex","age",
+                            "address","famsize",
+                            "Pstatus","Medu",
+                            "Fedu","Mjob",
+                            "Fjob","reason",
+                            "nursery","internet"), 
+                       all=FALSE,
+                       suffixes=c("mat","por"))
+
+print(nrow(studentMerge))
+
+
+```
+
+## 3. Análisis descriptivo
+
+En esta fase se realizará un análisis descriptivo para el dataset "studentMerge" en el que aparecen los estudiantes de ambas materias. Para ello se utilizaran técnicas como media, mediana, dispersion.
+
+###Media
+
+* (mean). Es la media aritmética (promedio) de los valores de una variable. Suma de los valores dividido por el tamaño muestral.
+
+    
+```{r}
+mean( studentMerge$G3mat )
+```
+    
+```{r}
+mean( studentMerge$G3por )
+```
+
+```{r}
+mean( studentMerge$age )
+```
+  
+###Mediana 
+
+* (median). Es un valor que divide a las observaciones en dos grupos con el mismo número de individuos (percentil 50). Si el número de datos es par, se elige la media de los dos datos centrales.
+
+```{r}
+median( studentMerge$G3mat )
+```
+    
+```{r}
+median( studentMerge$G3por )
+```
+
+###Dispersión 
+
+```{r}
+#Rango de edades
+range( studentMerge$age)
+
+```
+ 
+###Varianza 
+
+```{r}
+#Varianza notas G3mat y G3por
+var( studentMerge$G3por)
+var( studentMerge$G3mat)
+
+```
+
+###Desviación típica
+
+```{r}
+#Desviación típica G3mat y G3por
+sd( studentMerge$G3por)
+sd( studentMerge$G3mat)
+
+```
+
+###Coeficiente de variación
+
+```{r}
+#Coeficiente de variacion G3mat y G3por
+sd( studentMerge$G3por) / mean( studentMerge$G3por )
+sd( studentMerge$G3mat) / mean( studentMerge$G3mat )
+
+```
+
+
+
+
+
+## 4. Análisis exploratorio
+###Algunos gráficos útiles
+####Densidad
+
+* Graficos que muestran la densidad de mujeres y hombres en relacion a su edad
+```{r message = FALSE}
+#Cargamos las librerías necesarias 
+library(ggplot2)
+library(datasets)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(lattice) 
+```
+
+```{r}
+# Density de mujeres en relacion a la edad
+p1 <- ggplot(filter(studentMerge, sex=='F'), aes(x=age, y=..density..)) +
+geom_histogram(fill="cornsilk", colour="grey60", binwidth=1 ) + geom_density()
+
+
+# Density de hombres en relacion a la edad
+p2 <- ggplot(filter(studentMerge, sex=='M'), aes(x=age, y=..density..)) +
+geom_histogram(fill="cornsilk", colour="grey60", binwidth=1, ) +
+    geom_density()
+
+grid.arrange(p1, p2 , nrow=1)
+```
+
+
+
+####Boxplot
+
+* Boxplot que busca relacion notas y la razon por la que han elegido el colegio, tanto para las notas de portugués como para las de matemáticas
+```{r}
+plot1 <- qplot(reason, G3mat, data = studentMerge, geom = 'boxplot') 
+plot2 <- qplot(reason, G3por, data = studentMerge, geom = 'boxplot') 
+grid.arrange(plot1, plot2, nrow=1)
+```
+
+####Violin
+
+* Grafico de violin, que pinta las mismas relaciones que el boxplot anterior
+
+```{r}
+plot1 <- qplot(reason, G3mat, data = studentMerge, geom = 'violin') 
+plot2 <- qplot(reason, G3por, data = studentMerge, geom = 'violin') 
+grid.arrange(plot1, plot2, nrow=1)
+```
+
+####Clustering
+
+* Para clasificar los datos, encontrar patrones...
+```{r message=FALSE}
+#Cargamos las librerías necesarias 
+
+  require(cluster)
+  require(NbClust)
+  require(factoextra)
+```
+
+``` {r} 
+  {
+    set.seed(123)
+    df <- rbind(matrix(rnorm(studentMerge$G3por, sd( studentMerge$G3por)), ncol = 2),
+                matrix(rnorm(studentMerge$G3mat, mean( studentMerge$G3mat ), sd( studentMerge$G3mat)),ncol = 2))
+    colnames(df) <- c("G3por", "G3mat")
+    n_clusters <- 2
+    km.res <- kmeans(df, n_clusters, nstart = 25)
+    table(km.res$cluster)
+    
+    plot(df, col = km.res$cluster, pch = 19, frame = FALSE,main = "K-means with k = 2")
+    points(km.res$centers, col = 1:2, pch = 8, cex = 3)
+  }
+```
+
+
+## 5. Conclusiones
+
+En principio el dataset es válido para predecir el rendimiento del estudiante. Algunos de los factores que vemos podrían ser claves en el éxito estudiantil podrían ser:
+
+  * Razon por la que han elegido la escuela, que podría mostrar mayor o menos predisposicion a los estudios
+  * Horas de estudio de una asignatura

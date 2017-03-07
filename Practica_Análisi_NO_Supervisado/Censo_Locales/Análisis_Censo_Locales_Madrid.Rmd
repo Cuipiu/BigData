@@ -1,0 +1,148 @@
+---
+title: "Análisis_Censo_Locales_Madrid"
+author: "Guillermo Bonafonte Criado"
+date: "3/2/2017"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Cargamos las librerías necesarias
+
+```{r, message=FALSE}
+library(ggrepel)
+library(ggplot2)
+library(reshape2)
+library(RgoogleMaps)
+library(ggmap)
+library(sp)
+library(rgdal)
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(RColorBrewer)
+
+```
+
+# 2. Cargamos los datos
+```{r}
+url <- "http://datos.madrid.es/egob/catalogo/200085-5-censo-locales.txt"
+data_ <- read.table(url,sep="\t", header=TRUE,stringsAsFactors=FALSE, nrows=-1,dec=",", quote = "\"")
+```
+
+# 3. Representar el Mapa de locales Abiertos
+
+Las coordenadas vienen en sistema UTM y la librería RgoogleMaps usa coordenadas GPS, por lo que hay que cambiar el sistema de coordenadas
+```{r, message=FALSE}
+# Preparamos UTM coordinates matrix
+utmcoor<-SpatialPoints(cbind(data_$coordenada_x_local,data_$coordenada_y_local), proj4string=CRS("+proj=utm +zone=30"))
+longlatcoor<-spTransform(utmcoor,CRS("+proj=longlat"))
+
+#Creamos un dataframe con los valores de coordenadas GPS
+d <- as.data.frame(longlatcoor)
+colnames(d) <- c("X", "Y")
+```
+
+Añadimos las cordenadas GPS del dataframe "d" a "data_"
+```{r}
+data_ <- cbind(data_, d)
+
+```
+
+Hay algunos problemas de calidad del dato y hay que filtrar coordenadas
+fuera de rango, por lo que es necesario 
+```{r}
+data_copia <- subset(data_, data_$Y > 30)
+data_copia <- subset(data_, data_$X > -4)
+```
+
+
+Dibujamos el mapa
+
+```{r, message=FALSE}
+#Coordenadas geográficas de Madrid, España
+  #Latitud: 40°24′59″ N ---> Y
+  #Longitud: 3°42′09″ O ---> X
+  
+#Hacemos el subset
+abiertos <- subset(data_copia, desc_situacion_local == "Abierto")
+madrid.map <- get_map("madrid",
+                        color = "color",
+                        source = "google",
+                        maptype = "roadmap",
+                        zoom = 12)
+```
+
+```{r}
+ggmap(madrid.map) + geom_density2d(data = abiertos, aes(x = abiertos$X, y = abiertos$Y))
+```
+
+# 4. Realizar también Mapa para sólo bares y restaurantes 
+
+En el mapa sólo se muestran los registros con id_epigrafe que empiezan por 56.
+```{r, message=FALSE}
+  
+ 
+class(data_$id_epigrafe)
+bares.restaurantes <- subset(data_, grepl("^56", data_$id_epigrafe))
+
+madrid.map <- get_map("madrid",
+                        color = "color",
+                        source = "google",
+                        maptype = "roadmap",
+                        zoom = 12)
+```
+
+```{r}
+ggmap(madrid.map) + geom_density2d(data = bares.restaurantes, aes(x = bares.restaurantes$X, y = bares.restaurantes$Y))
+```
+
+# 5. Realizar Word-Cloud de los rótulos de todos los locales abiertos
+
+Filtrar rótulos raros como : “SIN ACTIVIDAD", "ROTULO NO
+INFORMADO", "R0TULO NO INFORMADO", aparece en el rótulo “.... NO UTILIZAR”
+
+```{r}
+
+    #Hacemos un suset para no tener cuenta los rotulos con la informacion siguiente.
+    rotulos <- subset(data_, rotulo!="ROTULO NO INFORMADO" & rotulo!="SIN ACTIVIDAD" & rotulo!="NO UTILIZAR")
+    
+    docs <- Corpus(VectorSource(rotulos$rotulo))
+    toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+    docs <- tm_map(docs, toSpace, "/")
+    docs <- tm_map(docs, toSpace, "@")
+    docs <- tm_map(docs, toSpace, "\\|")
+    
+    # Convert the text to lower case
+    docs <- tm_map(docs, content_transformer(tolower))
+    # Remove numbers
+    docs <- tm_map(docs, removeNumbers)
+    # Esta línea no se ha ejecutado debido al gran coste computacional
+    docs <- tm_map(docs, removeWords, stopwords("spanish"))
+    # Tampoco se ha ejecutado esta línea por el gran coste computacional
+    docs <- tm_map(docs, removeWords, c("calle","num"))
+    # Remove punctuations
+    docs <- tm_map(docs, removePunctuation)
+    # Eliminate extra white spaces
+    docs <- tm_map(docs, stripWhitespace)
+    # Text stemming
+    # docs <- tm_map(docs, stemDocument)
+    
+    dtm <- TermDocumentMatrix(docs)
+    m <- as.matrix(dtm)
+    v <- sort(rowSums(m),decreasing=TRUE)
+    d <- data.frame(word = names(v),freq=v)
+    head(d, 10)
+    
+    set.seed(1234)
+    wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+              max.words=200, random.order=FALSE, rot.per=0.35, 
+              colors=brewer.pal(8, "Dark2"))
+    
+  
+```
+

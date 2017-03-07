@@ -1,0 +1,96 @@
+---
+title: "Práctica aprendizaje supervisado"
+author: "Guillermo Bonafonte Criado"
+date: "15/1/2017"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Cargamos las librerías necesarias
+
+```{r, message=FALSE}
+library(htmltab)
+library(ggplot2)
+```
+
+# 2. Descargamos los datos
+```{r}
+myUrl <- "http://www.comoviajar.com/hoteles-lista.cfm?idzona=149&idpob=0&idcat=0";
+dsHoteles<- htmltab(doc = myUrl, which = 3, stringsAsFactors = FALSE);
+head(dsHoteles)
+```
+
+# 3. Preparamos los datos
+
+## Comprobamos los tipos
+```{r}
+sapply(dsHoteles, class)
+```
+
+## Cambiamos tipos
+
+### Cambio de la columna Hab
+
+Cambiamos el tipo de la columna Hab, vamos a tener problemas con las filas en las que tenemos el valor N.D.
+```{r, message=FALSE}
+dsHoteles$Hab <- as.numeric(dsHoteles$Hab) # NAs introducidos por coercion
+```
+
+Comprobamos las filas que nos han dado problemas 
+```{r}
+which(is.na(dsHoteles$Hab))
+```
+
+Mostramos el valor del que se ha introducido en las filas anteriores que como vemos es "NA"
+```{r}
+dsHoteles$Hab[which(is.na(dsHoteles$Hab))]
+```
+
+
+
+
+## Volvemos a comprobar tipos
+
+
+Vemos que tenemos ahora las clases de las columnas 'Cat' y 'Hab' se corresponden con tipos numéricos
+```{r}
+sapply(dsHoteles, class)
+```
+
+
+
+# 3. Obtener Función densidad 
+
+## Número habitaciones
+
+No necesitamos "na.omit" porque ggplot lo hace automaticamente
+```{r}
+ggplot(na.omit(dsHoteles), 
+  aes(x=Hab)) + 
+  geom_density() + 
+  scale_x_continuous(breaks=c(50, 100, 150), limits = c(0,160))
+```
+
+
+## Número hoteles por categoría
+
+```{r}
+ggplot(data=dsHoteles, aes(Cat)) + geom_bar() + 
+  scale_y_continuous(breaks=c(0, 25, 50, 75, 100, 150))
+```
+
+## Tablas contingencia Habitaciones por Categoría
+
+```{r}
+ggplot(dsHoteles, aes(Cat,Hab)) + geom_boxplot() + 
+  scale_y_continuous(breaks=c(0, 25, 50, 75, 100, 150))
+```
+
+
+

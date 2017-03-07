@@ -1,0 +1,166 @@
+---
+title: "Práctica aprendizaje supervisado"
+author: "Guillermo Bonafonte Criado"
+date: "5/1/2017"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Cargamos los datos
+
+##Cargamos los datos proporcionados por la librería mlbench 
+```{r}
+library(mlbench)
+data(Sonar)
+
+```
+
+##Vemos de un vistazo la estructura del dataset
+Mostramos solo las 5 primeras columnas ya que el numero de columnas del dataset es muy amplio
+```{r}
+library(knitr)
+kable(head(Sonar[,1:5]))
+```
+
+# 2. Preparacion de los datos
+## Creamos las particiones de entrenamiento y test para los datos Sonar
+```{r}
+library(caret)
+set.seed(998)
+inTraining <- createDataPartition(Sonar$Class, p = .75, list = FALSE)
+training <- Sonar[ inTraining,]
+testing  <- Sonar[-inTraining,]
+```
+
+
+#3. Clasificación
+
+## 3.1. Para el clasificador k-NN
+###Train control y traning
+```{r}
+library(class)
+ctrl <- trainControl(method="repeatedcv",repeats = 3, classProbs=TRUE)
+knnFit <- train(Class ~ ., data = training, method = "knn", trControl = ctrl, preProcess = c("center","scale"), tuneLength = 20,metric="ROC")
+
+knnFit
+
+```
+###Plot
+```{r}
+
+plot(knnFit)
+```
+###Prediccion y matriz de confusion
+```{r}
+knnPredict <- predict(knnFit,newdata = testing )
+#Obtenemos la matriz de confusion y vemos accuracy value y otros parámetros
+confusionMatrix(knnPredict, testing$Class )
+```
+
+
+
+
+## 3.2. Para el clasificador C-SVM kernel lineal
+###Train control y training
+```{r}
+library(class)
+ctrl <- trainControl(method="repeatedcv",repeats = 10)
+svmFit <- train(Class ~ ., data = training, method = "svmLinear", trControl = ctrl, preProcess = c("center","scale"), tuneLength = 20 )
+
+svmFit
+
+```
+
+Lo hacemos tambien 
+```{r}
+ctrl <- trainControl(method="repeatedcv",   # 10fold cross validation
+                     repeats=5,		    # do 5 repititions of cv
+                     summaryFunction=twoClassSummary,	# Use AUC to pick the best model
+                     classProbs=TRUE)
+ 
+ 
+#Train and Tune the SVM
+svm.tune <- train(Class ~ .,
+                  training,
+                  method = "svmRadial",   # Radial kernel
+                  tuneLength = 9,					# 9 values of the cost function
+                  preProc = c("center","scale"),  # Center and scale data
+                  metric="ROC",
+                  trControl=ctrl)
+ 
+svm.tune
+```
+
+###Plot
+```{r}
+
+plot(svm.tune)
+```
+
+###Prediccion y matriz de confusion
+```{r}
+svmPredict <- predict(svmFit,newdata = testing )
+#Obtenemos la matriz de confusion y vemos accuracy value y otros parámetros
+confusionMatrix(svmPredict, testing$Class )
+```
+
+```{r}
+svmPredict <- predict(svm.tune,newdata = testing )
+#Obtenemos la matriz de confusion y vemos accuracy value y otros parámetros
+confusionMatrix(svmPredict, testing$Class )
+```
+
+## 3.3. Para el clasificador kernel no lineal RBF
+###Train control y training
+```{r}
+library(class)
+ctrl <- trainControl(method="repeatedcv",repeats = 3)
+svmRadialFit <- train(Class ~ ., data = training, method = 'svmRadial', trControl = ctrl, preProcess = c("center","scale"), tuneLength = 20)
+
+svmRadialFit
+
+```
+
+###Plot
+```{r}
+
+plot(svmRadialFit)
+```
+###Prediccion y matriz de confusion
+```{r}
+knnPredict <- predict(svmRadialFit,newdata = testing )
+#Obtenemos la matriz de confusion y vemos accuracy value y otros parámetros
+confusionMatrix(knnPredict, testing$Class )
+```
+
+
+## 3.3. Para el clasificador C-SVM kernel lineal
+###Train control y training
+```{r}
+library(class)
+#install.packages("randomForest")
+library(randomForest)
+ctrl <- trainControl(method="repeatedcv",repeats = 3)
+rfFit <- train(Class ~ ., data = training, method = 'rf', trControl = ctrl, preProcess = c("center","scale"), tuneLength = 20)
+
+rfFit
+
+```
+
+###Plot
+```{r}
+
+plot(rfFit)
+```
+###Prediccion y matriz de confusion
+```{r}
+knnPredict <- predict(rfFit,newdata = testing )
+#Obtenemos la matriz de confusion y vemos accuracy value y otros parámetros
+confusionMatrix(knnPredict, testing$Class )
+```

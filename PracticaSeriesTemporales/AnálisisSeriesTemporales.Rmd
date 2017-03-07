@@ -1,0 +1,67 @@
+---
+title: "Práctica Series Temporales"
+author: "Guillermo Bonafonte Criado"
+date: "5/2/2017"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Carga de datos
+
+```{r}
+datos <- read.csv(file="IDCJAC0002_035019_Data1.csv",
+                    header=TRUE, sep=",")
+
+datos2 <- read.csv(file="IDCJAC0002_035019_Data12.csv",
+                    header=TRUE, sep=",")
+```  
+
+# 2. Pintar la serie temporal
+
+```{r, eval=FALSE}
+  plot( datos$Mean.maximum.temperature..Â.C., col="blue", type="l", xlab="año", ylab="temperatura maxima", main="Serie temporal") 
+```
+  
+# 2. Pintar su descomposición (realizarla desde el periodo 1962-2011 para que no salga el error “time series contains internal NAs”
+
+```{r}
+  serie <- ts(datos[565:1161,5], start = c(1962), frequency = 12)
+  descomp <- decompose(serie)
+  plot(descomp)
+``` 
+  
+# 3. Analizar su estacionalidad y Auto-correlación (es claramente cíclica cada 12 meses)
+
+```{r,eval=FALSE}
+  boxplot(datos$Mean.maximum.temperature..Â.C.~datos$Month,data=datos)
+  acf(datos$Mean.maximum.temperature..Â.C.)
+```  
+  
+# 4.  Analizar su media móvil de 6 meses y de 12 meses (con 12 meses que es su componente cíclica principal, se aproxima mucho a la curva de tendencia)
+
+```{r}
+  x = log(serie)
+  dif1.x = diff(serie)
+  dif12.dif1.x = diff(dif1.x, lag=12)
+  plot(dif12.dif1.x)
+``` 
+
+  
+```{r}  
+  serieTempEnero <- ts(datos2[48:97,4], start = c(1962))
+  #View(serieTempEnero)
+  ts.plot(serieTempEnero)
+```  
+  
+# 5. Predecir periodo 2010-2011 a partir del periodo 1962-2009 y comparar con la realidad para los métodos ETS, Holt-Winters, STL y AutoArima
+
+```{r,eval=FALSE}
+  
+  mosaic(HairEyeColor, shade=TRUE, legend=TRUE) 
+```
+

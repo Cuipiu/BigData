@@ -1,0 +1,134 @@
+---
+title: "Práctica Preparación y Manipulación Datos con R"
+author: "Guillermo Bonafonte Criado"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## 1. Objetivo: Limpiar el dataset y prepararlo para posibles análisis/modelos.
+
+En esta actividad se codifican y comentan las acciones necesarias a realizar sobre un “messy dataset” para convertirlo en un “tidy dataset”, limpio en contenido, y con un formato adecuado, que lo haga susceptible de ser utilizado en un proceso de análisis de datos.
+
+## 2. Lectura del dataset en R.
+
+###Establecemos y obtenemos directorio de trabajo
+Obtenemos directorio de trabajo y lo asignamos 
+```{r}
+getwd()
+setwd(getwd())
+```
+
+
+
+###Cargamos los datos con read.table()
+
+```{r}
+messyds <- read.csv(file="datos/messyDS.csv", header=TRUE, sep=",")
+
+```
+
+Mostramos un parte de la estructura del datasets para hacernos una idea de su contenido
+```{r}
+library(knitr)
+kable(head(messyds[,1:5]))
+
+
+```
+
+
+
+## 3. Acciones de limpieza explicadas en texto y codificadas en R.
+* Primeramente comprobamos las clases de las columnas con lapply, a priori parecen clases correctas para los datos que almacenan
+```{r}
+lapply(messyds, class)
+```
+
+* Consultamos y cambiamos el nombre de las columnas ya que no son adecuados
+```{r}
+#Consultamos nombres
+colnames(messyds)
+```
+
+```{r}
+#Cambiamos nombres
+colnames(messyds) <- c("Year", "Area", "Street", "Street2", "HTML")
+kable(head(messyds[,1:5]))
+```
+
+* Creamos
+```{r message=FALSE}
+require(tidyr)
+require(dtplyr)
+library(data.table)
+library(tidyr)
+```
+
+```{r}
+#Creamos un dataTable a partir del dataSet
+messyDT <- data.table(messyds)
+```
+
+* En la columna Street, cambiamos el caracter odd por un espacio
+```{r}
+messyDT$Street <- gsub('å', ' ', messyDT$Street)
+kable(head(messyDT[,1:5]))
+```
+
+* En la columna street, cambiamos el caracter odd por un espacio
+```{r}
+capFirst <- function(s) {
+    paste(toupper(substring(s, 1, 1)), substring(s, 2), sep = "")
+}
+
+messyDT$Street <- capFirst(messyDT$Street)
+kable(head(messyDT[,1:5]))
+
+
+
+```
+
+* Eliminamos la columna de Street2 porque tiene la misma info que Street
+```{r}
+messyDT <- messyDT[,-4]
+kable(head(messyDT[,1:4]))
+
+
+
+```
+
+* Unimos La columna Area a Street separado por una coma
+```{r}
+tidyDataSet <- unite(messyDT,
+                  col = "Street",
+                  Street, Area,
+                  sep = ", ")
+
+
+
+```
+## 4. Exportar desde R a un fichero local, el dataset limpio resultante.
+```{r}
+outputDir <- "./datos/output"
+
+if (!file.exists(outputDir)) {
+                 dir.create(outputDir)
+                 }
+
+write.table(tidyDataSet,
+            file=paste(outputDir,
+                       "tidyDataSet.csv",
+                       sep="/"),
+            sep=";",row.names=FALSE)
+
+```
+
+## 5. Conclusiones.
+
+Se ha realizado una limpieza parcial de los datos. 
